@@ -1,0 +1,149 @@
+import sqlite3
+from datetime import datetime
+
+# Connect to the SQLite database (or create it if it doesn't exist)
+conn = sqlite3.connect("health_center.db")
+cursor = conn.cursor()
+
+# Create tables for patients, doctors, appointments, and prescriptions
+def setup_database():
+    cursor.execute('''CREATE TABLE IF NOT EXISTS patients (
+                        patient_id INTEGER PRIMARY KEY,
+                        name TEXT,
+                        dob DATE,
+                        address TEXT,
+                        phone TEXT)''')
+    
+    cursor.execute('''CREATE TABLE IF NOT EXISTS doctors (
+                        doctor_id INTEGER PRIMARY KEY,
+                        name TEXT,
+                        specialty TEXT)''')
+    
+    cursor.execute('''CREATE TABLE IF NOT EXISTS appointments (
+                        appointment_id INTEGER PRIMARY KEY,
+                        patient_id INTEGER,
+                        doctor_id INTEGER,
+                        date_time DATETIME,
+                        status TEXT,
+                        FOREIGN KEY (patient_id) REFERENCES patients (patient_id),
+                        FOREIGN KEY (doctor_id) REFERENCES doctors (doctor_id))''')
+    
+    cursor.execute('''CREATE TABLE IF NOT EXISTS prescriptions (
+                        prescription_id INTEGER PRIMARY KEY,
+                        appointment_id INTEGER,
+                        medication TEXT,
+                        dosage TEXT,
+                        instructions TEXT,
+                        FOREIGN KEY (appointment_id) REFERENCES appointments (appointment_id))''')
+    
+    conn.commit()
+
+# Function to register a new patient
+def register_patient(name, dob, address, phone):
+    cursor.execute("INSERT INTO patients (name, dob, address, phone) VALUES (?, ?, ?, ?)",
+                   (name, dob, address, phone))
+    conn.commit()
+    print(f"Patient {name} registered successfully.")
+
+# Function to add a new doctor
+def add_doctor(name, specialty):
+    cursor.execute("INSERT INTO doctors (name, specialty) VALUES (?, ?)", (name, specialty))
+    conn.commit()
+    print(f"Doctor {name} added successfully.")
+
+# Function to book an appointment
+def book_appointment(patient_id, doctor_id, date_time):
+    cursor.execute("INSERT INTO appointments (patient_id, doctor_id, date_time, status) VALUES (?, ?, ?, 'Booked')",
+                   (patient_id, doctor_id, date_time))
+    conn.commit()
+    print(f"Appointment booked for patient {patient_id} with doctor {doctor_id} on {date_time}.")
+
+# Function to cancel an appointment
+def cancel_appointment(appointment_id):
+    cursor.execute("UPDATE appointments SET status = 'Cancelled' WHERE appointment_id = ?", (appointment_id,))
+    conn.commit()
+    print(f"Appointment {appointment_id} cancelled successfully.")
+
+# Function to check-in a patient
+def check_in(patient_id, appointment_id):
+    cursor.execute("SELECT status FROM appointments WHERE appointment_id = ? AND patient_id = ?", (appointment_id, patient_id))
+    result = cursor.fetchone()
+    if result and result[0] == 'Booked':
+        print("Check-in successful.")
+    else:
+        print("Invalid appointment or already checked in.")
+
+# Function to record a prescription
+def add_prescription(appointment_id, medication, dosage, instructions):
+    cursor.execute("INSERT INTO prescriptions (appointment_id, medication, dosage, instructions) VALUES (?, ?, ?, ?)",
+                   (appointment_id, medication, dosage, instructions))
+    conn.commit()
+    print(f"Prescription for {medication} added for appointment {appointment_id}.")
+
+# Function to list appointments for a patient
+def list_appointments(patient_id):
+    cursor.execute("SELECT appointment_id, date_time, status FROM appointments WHERE patient_id = ?", (patient_id,))
+    appointments = cursor.fetchall()
+    if appointments:
+        for appt in appointments:
+            print(f"Appointment ID: {appt[0]}, Date & Time: {appt[1]}, Status: {appt[2]}")
+    else:
+        print("No appointments found.")
+
+# Sample main function to demonstrate the functionality
+def main():
+    setup_database()
+
+    print("Welcome to the Health Center System")
+    while True:
+        print("\nOptions: [1] Register Patient [2] Add Doctor [3] Book Appointment [4] Cancel Appointment [5] Check-In [6] Add Prescription [7] List Appointments [8] Exit")
+        choice = input("Choose an option: ")
+        
+        if choice == "1":
+            name = input("Enter patient name: ")
+            dob = input("Enter date of birth (YYYY-MM-DD): ")
+            address = input("Enter address: ")
+            phone = input("Enter phone number: ")
+            register_patient(name, dob, address, phone)
+        
+        elif choice == "2":
+            name = input("Enter doctor name: ")
+            specialty = input("Enter specialty: ")
+            add_doctor(name, specialty)
+        
+        elif choice == "3":
+            patient_id = int(input("Enter patient ID: "))
+            doctor_id = int(input("Enter doctor ID: "))
+            date_time = input("Enter appointment date and time (YYYY-MM-DD HH:MM): ")
+            book_appointment(patient_id, doctor_id, date_time)
+        
+        elif choice == "4":
+            appointment_id = int(input("Enter appointment ID to cancel: "))
+            cancel_appointment(appointment_id)
+        
+        elif choice == "5":
+            patient_id = int(input("Enter patient ID: "))
+            appointment_id = int(input("Enter appointment ID: "))
+            check_in(patient_id, appointment_id)
+        
+        elif choice == "6":
+            appointment_id = int(input("Enter appointment ID: "))
+            medication = input("Enter medication: ")
+            dosage = input("Enter dosage: ")
+            instructions = input("Enter instructions: ")
+            add_prescription(appointment_id, medication, dosage, instructions)
+        
+        elif choice == "7":
+            patient_id = int(input("Enter patient ID: "))
+            list_appointments(patient_id)
+        
+        elif choice == "8":
+            print("Exiting the system.")
+            break
+        
+        else:
+            print("Invalid choice. Please try again.")
+
+# Run the main function
+if __name__ == "__main__":
+    main()
